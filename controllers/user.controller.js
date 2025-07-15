@@ -7,6 +7,7 @@ const nodemailer = require('nodemailer')
 const UserModel = require('../models/user.model')
 const dotenv =  require('dotenv')
 dotenv.config()
+const { ethers } = require('ethers');
 let message;
 
 cloudinary.config({ 
@@ -41,61 +42,61 @@ const upload=(req,res)=>{
 }
 
 const registerPage = async (req, res) => {
-  const { first_name, phone_number, email, password, profileImage } = req.body
-    let image;
-  try {
-    const saltRound = await bcrypt.genSalt(10)
-    const hashed = await bcrypt.hash(req.body.password, saltRound)
-    console.log(hashed);
+  const { first_name, phone_number, email, password, profileImage } = req.body;
 
-   await cloudinary.v2.uploader.upload(profileImage, (error, result)=>{
-    if(error){
-      console.log(error)
-      console.log('cannot upload file at this moment');
-      res.send({status:false, message:'file cannot be uploaded'})     
-    }else{
-      console.log('file upload');
-      console.log(result.secure_url);
-      image =  result.secure_url
-      res.send({status:true, message:' file uploaded successfully'})
-      
+  try {
+    const saltRound = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(password, saltRound);
+
+    // Upload image to Cloudinary
+    const uploadResult = await cloudinary.v2.uploader.upload(profileImage);
+    const image = uploadResult.secure_url;
+
+    // Generate Ethereum-like wallet address
+    const wallet = ethers.Wallet.createRandom();
+    const walletAddress = wallet.address;
+
+    // Create and save user
+    const userForm = new UserModel({
+      first_name,
+      phone_number,
+      email,
+      password: hashed,
+      profileImage: image,
+      walletAddress: walletAddress,
+      balance: 100
+    });
+
+    await userForm.save();
+
+    // Send welcome email
+    const mailOptions = {
+      from: process.env.NODEMAIL_GMAIL,
+      to: email,
+      subject: `WELCOME TO VIBRANT ${first_name}`,
+      text: 'Account created successfully',
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log('Email error:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    });
+
+    res.send({ status: true, message: 'Registered successfully' });
+
+  } catch (err) {
+    console.error(err);
+    if (err.code === 11000) {
+      res.send({ status: false, message: 'Registration failed, user already exists' });
+    } else {
+      res.send({ status: false, message: 'Cannot create your account at this time' });
     }
-  
-});
-    let userForm = new UserModel({ first_name, phone_number, email, password: hashed, profileImage:image })
-    await userForm.save()
-    var mailOptions = {
-  from:process.env.NODEMAIL_GMAIL,
-  to: req.body.email,
-  subject: `WELCOME TO VIBRANT ${req.body.first_name}`,
-  text: 'Account created successfully'
+  }
 };
 
-transporter.sendMail(mailOptions, function(error, info){
-  if (error) {
-    console.log(error);
-  } else {
-    console.log('Email sent: ' + info.response);
-  }
-});
-    
-    // res.render('register', {message})
-    res.send({status:true,message:'registered successfully' })
-  } catch (err) {
-    console.log(err.errorResponse.code);
-    if(err.errorResponse.code == 11000){
-      res.send({status:false, message:'registered failed, user already exist' })
-    }else{
-      res.send({
-        status: 'false',
-        message:'cannot create your account at this time'
-      })
-    }
-   
-
-  }
-
-}
 
 const loginPageP = async (req, res)=>{
   // const{email, phone_number, password} =req.body
@@ -126,7 +127,7 @@ const loginPageP = async (req, res)=>{
    if (isMatch){
     // console.log('user logged in successfully');
     const token = jwt.sign({id:user._id}, process.env.APP_PASS, {expiresIn:'1h'} )
-    res.send({message:'signin successful', token})
+    res.send({message:'signin successful', token, id: user._id})
     // res.render('dashboard')
     
    }else{
@@ -166,11 +167,66 @@ const checkMail = async (req, res)=>{
       
   }
 }
+const getUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await UserModel.findById(id).select("-password");
+    if (!user) {
+      return res.status(404).send({ status: false, message: "User not found" });
+    }
+    res.send({ status: true, user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ status: false, message: "Error retrieving user" });
+  }
+};
+
+const transferTokens = async (req, res) => {
+  const { senderId, recipientAddress, amount } = req.body;
+
+  try {
+    const sender = await UserModel.findById(senderId);
+    const recipient = await UserModel.findOne({ walletAddress: recipientAddress });
+
+    if (!sender || !recipient) {
+      return res.status(404).send({ status: false, message: "Sender or recipient not found" });
+    }
+
+    if (sender.walletAddress === recipientAddress) {
+      return res.status(400).send({ status: false, message: "You can't send tokens to yourself" });
+    }
+
+    if (sender.balance < amount) {
+      return res.status(400).send({ status: false, message: "Insufficient balance" });
+    }
+
+    // Transfer logic
+    sender.balance -= amount;
+    recipient.balance += amount;
+
+    await sender.save();
+    await recipient.save();
+
+    return res.send({
+      status: true,
+      message: `Successfully sent ${amount} tokens to ${recipient.walletAddress}`,
+      newBalance: sender.balance
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send({ status: false, message: "Transfer failed due to server error" });
+  }
+};
+
 
 module.exports = {
     registerPage,
     checkMail,
     loginPageP,
-    upload
+    upload,
+    verifyToken,
+    getUser,
+    transferTokens
     
 }

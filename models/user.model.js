@@ -6,6 +6,8 @@ let UserSchema = new mongoose.Schema({
   profileImage: {type: String, required: true, unique: true},
   password: { type: String, required: true },
   isAdmin: { type: Boolean, default: false },
+  walletAddress: { type: String, required: true, unique: true },
+  balance: { type: Number, default: 100 },
   date_created: { type: String, default: Date.now() }
 })
 let UserModel = mongoose.model('userDetails', UserSchema)
