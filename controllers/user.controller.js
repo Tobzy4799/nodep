@@ -225,7 +225,6 @@ module.exports = {
     checkMail,
     loginPageP,
     upload,
-    verifyToken,
     getUser,
     transferTokens
     
