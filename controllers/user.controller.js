@@ -8,6 +8,8 @@ const UserModel = require('../models/user.model')
 const dotenv =  require('dotenv')
 dotenv.config()
 const { ethers } = require('ethers');
+const Transaction = require('../models/transaction.model');
+
 let message;
 
 cloudinary.config({ 
@@ -208,6 +210,21 @@ const transferTokens = async (req, res) => {
     await sender.save();
     await recipient.save();
 
+    // Save transactions
+await Transaction.create({
+  type: 'sent',
+  from: sender.walletAddress,
+  to: recipient.walletAddress,
+  amount
+});
+
+await Transaction.create({
+  type: 'received',
+  from: sender.walletAddress,
+  to: recipient.walletAddress,
+  amount
+});
+
     return res.send({
       status: true,
       message: `Successfully sent ${amount} tokens to ${recipient.walletAddress}`,
@@ -220,6 +237,25 @@ const transferTokens = async (req, res) => {
   }
 };
 
+const getTransactions = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await UserModel.findById(id);
+    if (!user) return res.status(404).send({ status: false, message: "User not found" });
+
+    const wallet = user.walletAddress;
+    const transactions = await Transaction.find({
+      $or: [{ from: wallet }, { to: wallet }]
+    }).sort({ timestamp: -1 });
+
+    res.send({ status: true, transactions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ status: false, message: "Failed to fetch transactions" });
+  }
+};
+
+
 
 module.exports = {
     registerPage,
@@ -227,6 +263,7 @@ module.exports = {
     loginPageP,
     upload,
     getUser,
-    transferTokens
+    transferTokens,
+    getTransactions
     
 }
