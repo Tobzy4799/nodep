@@ -20,6 +20,9 @@ app.set('view engine', 'ejs')
 app.use(express.urlencoded({ extended: true, limit:'50mb' }))
 const UserRoute = require('./routes/user.routes')
 app.use('/user', UserRoute)
+const profile = require('./routes/profile.routes');
+app.use('/api', profile);  // Now /api/profile is active
+
 
 
 
