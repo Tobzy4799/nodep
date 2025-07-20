@@ -211,11 +211,12 @@ const transferTokens = async (req, res) => {
     await recipient.save();
 
     // Save just one transaction (don't duplicate)
-    await Transaction.create({
-      from: sender.walletAddress,
-      to: recipient.walletAddress,
-      amount
-    });
+   await Transaction.create({
+  type: 'sent',
+  from: sender.walletAddress,
+  to: recipient.walletAddress,
+  amount
+});
 
     return res.send({
       status: true,
