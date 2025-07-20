@@ -203,27 +203,19 @@ const transferTokens = async (req, res) => {
       return res.status(400).send({ status: false, message: "Insufficient balance" });
     }
 
-    // Transfer logic
+    // Perform token transfer
     sender.balance -= amount;
     recipient.balance += amount;
 
     await sender.save();
     await recipient.save();
 
-    // Save transactions
-await Transaction.create({
-  type: 'sent',
-  from: sender.walletAddress,
-  to: recipient.walletAddress,
-  amount
-});
-
-await Transaction.create({
-  type: 'received',
-  from: sender.walletAddress,
-  to: recipient.walletAddress,
-  amount
-});
+    // Save just one transaction (don't duplicate)
+    await Transaction.create({
+      from: sender.walletAddress,
+      to: recipient.walletAddress,
+      amount
+    });
 
     return res.send({
       status: true,
@@ -237,11 +229,11 @@ await Transaction.create({
   }
 };
 
+
 const getTransactions = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1. Find the user by ID
     const user = await UserModel.findById(id);
     if (!user) {
       return res.status(404).json({ status: false, message: "User not found" });
@@ -249,33 +241,24 @@ const getTransactions = async (req, res) => {
 
     const wallet = user.walletAddress;
 
-    // 2. Fetch sent and received transactions separately
-    const sentTxs = await Transaction.find({ from: wallet }).sort({ timestamp: -1 });
-    const receivedTxs = await Transaction.find({ to: wallet }).sort({ timestamp: -1 });
+    // Find all transactions where the user is either sender or recipient
+    const transactions = await Transaction.find({
+      $or: [{ from: wallet }, { to: wallet }]
+    }).sort({ timestamp: -1 });
 
-    // 3. Tag each with a type
-    const taggedSent = sentTxs.map(tx => ({
+    // Infer type based on user role in each transaction
+    const taggedTransactions = transactions.map(tx => ({
       ...tx.toObject(),
-      type: "sent",
+      type: tx.from === wallet ? "sent" : "received"
     }));
 
-    const taggedReceived = receivedTxs.map(tx => ({
-      ...tx.toObject(),
-      type: "received",
-    }));
-
-    // 4. Combine and sort all tagged transactions by timestamp
-    const allTxs = [...taggedSent, ...taggedReceived].sort(
-      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-    );
-
-    // 5. Return response
-    res.status(200).json({ status: true, transactions: allTxs });
+    res.status(200).json({ status: true, transactions: taggedTransactions });
   } catch (err) {
     console.error("Transaction fetch error:", err);
     res.status(500).json({ status: false, message: "Failed to fetch transactions" });
   }
 };
+
 
 
 
