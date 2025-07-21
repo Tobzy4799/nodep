@@ -203,15 +203,14 @@ const transferTokens = async (req, res) => {
       return res.status(400).send({ status: false, message: "Insufficient balance" });
     }
 
-    // Perform token transfer
+    // Perform transfer
     sender.balance -= amount;
     recipient.balance += amount;
 
     await sender.save();
     await recipient.save();
 
-    // Save just one transaction (don't duplicate)
-   await Transaction.create({
+    await Transaction.create({
   type: 'sent',
   from: sender.walletAddress,
   to: recipient.walletAddress,
@@ -220,7 +219,7 @@ const transferTokens = async (req, res) => {
 
     return res.send({
       status: true,
-      message: `Successfully sent ${amount} tokens to ${recipient.walletAddress}`,
+      message: `Successfully sent ${amount} VIB to ${recipient.walletAddress}`,
       newBalance: sender.balance
     });
 
