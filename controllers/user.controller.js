@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs')
-const express = require('express') // to import express
+const express = require('express') 
 const app = express();
 const jwt = require('jsonwebtoken')
 const cloudinary = require('cloudinary')
@@ -15,7 +15,7 @@ let message;
 cloudinary.config({ 
         cloud_name: process.env.CLOUD_NAME, 
         api_key: process.env.CLOUD_KEY, 
-        api_secret: process.env.CLOUD_SECRET, // Click 'View API Keys' above to copy your API secret
+        api_secret: process.env.CLOUD_SECRET, 
     });
 
 var transporter = nodemailer.createTransport({
@@ -101,41 +101,31 @@ const registerPage = async (req, res) => {
 
 
 const loginPageP = async (req, res)=>{
-  // const{email, phone_number, password} =req.body
   const{loginId, password} =req.body
   try{
     let user;
     let mail = req.body.loginId
-    // if(!req.body,email && !req.body.phone_number){
-    //   nessage = 'please input a phone number or email'
-    //   res.render('login', {message})
-    // }
+
     if(mail.includes('@')){
        user = await UserModel.findOne({email: req.body.loginId})
     }else{
        user = await UserModel.findOne({phone_number: req.body.loginId})
     }
-  //  if(mail){
-  //   user = await UserModel.findOne({email})
-  //  }else{
-  //   user = await UserModel.findOne({phone_number})
-  //  }
+  
   if(!user){
      res.send({status:true,message:'invalid credentials' })
-    // message = 'invalid credentials'
-    // res.render('login', {message});    
+       
   }else{
    let isMatch = await bcrypt.compare(password, user.password)
    if (isMatch){
-    // console.log('user logged in successfully');
+    
     const token = jwt.sign({id:user._id}, process.env.APP_PASS, {expiresIn:'1h'} )
     res.send({message:'signin successful', token, id: user._id})
-    // res.render('dashboard')
+    
     
    }else{
     console.log('invalid credentials');
-    // message = 'invalid credentials'
-    // res.render('login', { message })
+    
      res.send({status:true,message:'registered successfully' })
     
    }

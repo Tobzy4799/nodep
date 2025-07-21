@@ -18,6 +18,6 @@ router.get('/dashboard/:id',verifyToken, getUser)
 
 router.get('/transactions/:id', verifyToken, getTransactions);
 
-// router.post('/update-password', verifyToken,updatePassword)
+
 
 module.exports = router
