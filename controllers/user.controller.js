@@ -75,7 +75,7 @@ const registerPage = async (req, res) => {
     const mailOptions = {
       from: process.env.NODEMAIL_GMAIL,
       to: email,
-      subject: `WELCOME TO VIBRANT ${first_name}`,
+      subject: `WELCOME TO VibraWallet ${first_name}`,
       text: 'Account created successfully',
     };
 

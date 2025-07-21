@@ -16,8 +16,12 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 
-// ✅ CORS: Allow only localhost frontend for now
-const allowedOrigins = ['http://localhost:5173'];
+// ✅ CORS: Allow localhost AND Vercel frontend
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://vibrawallet.vercel.app'
+];
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -35,7 +39,7 @@ const UserRoute = require('./routes/user.routes');
 app.use('/user', UserRoute);
 
 const profile = require('./routes/profile.routes');
-app.use('/api', profile);  // Now /api/profile is active
+app.use('/api', profile); // Now /api/profile is active
 
 // DB Connection
 let URI = process.env.DATABASE_URI;
